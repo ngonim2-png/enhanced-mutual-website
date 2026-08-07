@@ -1,0 +1,17 @@
+{
+  "name": "enhanced-mutual-backend",
+  "version": "1.0.0",
+  "description": "Backend API + static server for the Enhanced Mutual Insurance website (Self Care login, quotes, contact messages).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.1"
+  }
+}
