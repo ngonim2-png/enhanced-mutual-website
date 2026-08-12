@@ -84,9 +84,9 @@ function renderLogin(errorMsg) {
       <p class="sub">Enter your policy number and the phone number on file to see your policy details, payment history, and claims.</p>
       <div class="err" id="loginErr" style="${errorMsg ? 'display:block' : ''}">${esc(errorMsg || '')}</div>
       <label>Policy number</label>
-      <input id="p_policyNo" placeholder="e.g. EMI-END01-0142" autocapitalize="characters">
+      <input id="p_policyNo" placeholder="e.g. MPE 204" autocapitalize="characters">
       <label>Phone number</label>
-      <input id="p_phone" placeholder="077 000 000" type="tel">
+      <input id="p_phone" placeholder="77 000 000 (no leading 0)" type="tel">
       <button class="btn-gold" id="loginBtn" onclick="doPortalLogin()">View my policy</button>
     </div>
     <p style="text-align:center;font-size:12px;color:var(--text2)">Having trouble? Contact your marketer or call our office.</p>
@@ -95,7 +95,10 @@ function renderLogin(errorMsg) {
 
 async function doPortalLogin() {
   const policyNo = document.getElementById('p_policyNo').value.trim();
-  const phone = document.getElementById('p_phone').value.trim();
+  let phone = document.getElementById('p_phone').value.trim();
+  // Normalize to match how CoreHub stores phone numbers: no spaces, no leading 0
+  phone = phone.replace(/[\s-]/g, '');
+  if (phone.startsWith('0')) phone = phone.slice(1);
   if (!policyNo || !phone) {
     const err = document.getElementById('loginErr');
     err.textContent = 'Please enter both your policy number and phone number.';
