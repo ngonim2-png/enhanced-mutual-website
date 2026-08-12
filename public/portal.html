@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Policy — Enhanced Mutual Insurance (SL) Ltd</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+:root{
+  --navy:#181530; --navy2:#221D45; --gold:#FFC93C; --gold-dark:#B8790A;
+  --bg:#F8F7FC; --card:#FFFFFF; --border:#EAE7F5; --border-strong:#D3CEE8;
+  --text:#15132B; --text2:#615D80;
+  --green:#1E7145; --green-bg:#E8F4EC; --amber:#B5790E; --amber-bg:#FDF2DE;
+  --red:#B3261E; --red-bg:#FCEAE9; --grey:#5C6672; --grey-bg:#EEF0F2;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:15px;}
+.wrap{max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+.topbar{background:var(--navy);color:#fff;padding:18px 20px;text-align:center;}
+.topbar .name{font-weight:700;font-size:16px;}
+.topbar .tag{font-size:12px;color:var(--gold);margin-top:2px;}
+#content{flex:1;padding:20px 16px 40px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px;}
+h2{font-size:16px;margin:0 0 4px;}
+.sub{font-size:13px;color:var(--text2);margin:0 0 14px;}
+label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:5px;}
+input{width:100%;padding:11px 12px;border:1px solid var(--border-strong);border-radius:7px;font-size:15px;margin-bottom:14px;}
+button{width:100%;padding:12px;border-radius:7px;border:none;font-size:15px;font-weight:700;cursor:pointer;}
+.btn-gold{background:var(--gold);color:#181530;}
+.btn-gold:disabled{opacity:.6;}
+.err{background:var(--red-bg);color:var(--red);padding:10px 12px;border-radius:7px;font-size:13px;margin-bottom:14px;display:none;}
+.badge{display:inline-block;padding:3px 10px;border-radius:14px;font-size:12px;font-weight:700;}
+.b-green{background:var(--green-bg);color:var(--green);}
+.b-amber{background:var(--amber-bg);color:var(--amber);}
+.b-red{background:var(--red-bg);color:var(--red);}
+.b-grey{background:var(--grey-bg);color:var(--grey);}
+.row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.row:last-child{border-bottom:none;}
+.row .lbl{color:var(--text2);}
+.row .val{font-weight:600;}
+.paylist{margin-top:10px;}
+.paylist .p{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);}
+.paylist .p:last-child{border-bottom:none;}
+.empty{color:var(--text2);font-size:13px;padding:10px 0;}
+.signout{text-align:center;padding:14px;font-size:13px;color:var(--text2);}
+.signout a{color:var(--text2);}
+.loading{text-align:center;padding:40px;color:var(--text2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="name">Enhanced Mutual Insurance (SL) Ltd</div>
+    <div class="tag">My Policy Portal</div>
+  </div>
+  <div style="text-align:center;padding:10px 16px 0;">
+    <a href="index.html" style="font-size:12px;color:var(--text2);text-decoration:none;">&larr; Back to enhancedmutualinsurance.com</a>
+  </div>
+  <div id="content"></div>
+</div>
+
+<script>
+const API_BASE = 'https://emi-corehub-backend-v3-aug-1.onrender.com/api/v1';
+
+function esc(s) {
+  const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML;
+}
+function fmtMoney(n) {
+  return 'NLe ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function statusBadge(status) {
+  const map = { Active: 'b-green', 'Not Yet Commenced': 'b-grey', Warning: 'b-amber', Lapsed: 'b-red', Matured: 'b-grey' };
+  return `<span class="badge ${map[status] || 'b-grey'}">${esc(status)}</span>`;
+}
+
+function renderLogin(errorMsg) {
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <h2>View your policy</h2>
+      <p class="sub">Enter your policy number and the phone number on file to see your policy details, payment history, and claims.</p>
+      <div class="err" id="loginErr" style="${errorMsg ? 'display:block' : ''}">${esc(errorMsg || '')}</div>
+      <label>Policy number</label>
+      <input id="p_policyNo" placeholder="e.g. EMI-END01-0142" autocapitalize="characters">
+      <label>Phone number</label>
+      <input id="p_phone" placeholder="077 000 000" type="tel">
+      <button class="btn-gold" id="loginBtn" onclick="doPortalLogin()">View my policy</button>
+    </div>
+    <p style="text-align:center;font-size:12px;color:var(--text2)">Having trouble? Contact your marketer or call our office.</p>
+  `;
+}
+
+async function doPortalLogin() {
+  const policyNo = document.getElementById('p_policyNo').value.trim();
+  const phone = document.getElementById('p_phone').value.trim();
+  if (!policyNo || !phone) {
+    const err = document.getElementById('loginErr');
+    err.textContent = 'Please enter both your policy number and phone number.';
+    err.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  try {
+    const res = await fetch(API_BASE + '/portal/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ policyNo, phone }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data.message && (data.message.message || data.message)) || 'Login failed');
+    sessionStorage.setItem('portalToken', data.portalToken);
+    await loadPortalData();
+  } catch (e) {
+    renderLogin(e.message);
+  }
+}
+window.doPortalLogin = doPortalLogin;
+
+async function loadPortalData() {
+  document.getElementById('content').innerHTML = '<div class="loading">Loading your policy…</div>';
+  const token = sessionStorage.getItem('portalToken');
+  if (!token) { renderLogin(); return; }
+  try {
+    const res = await fetch(API_BASE + '/portal/me', { headers: { Authorization: 'Bearer ' + token } });
+    const data = await res.json();
+    if (!res.ok) {
+      sessionStorage.removeItem('portalToken');
+      renderLogin((data.message && (data.message.message || data.message)) || 'Please log in again.');
+      return;
+    }
+    renderDashboard(data);
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="card"><p class="sub">Could not reach the server. Please check your connection and try again.</p><button class="btn-gold" onclick="loadPortalData()">Retry</button></div>`;
+  }
+}
+
+function renderDashboard(data) {
+  const c = data.client;
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <h2>Hello, ${esc(c.fullName.split(' ')[0])}</h2>
+      <p class="sub">Client No. ${esc(c.clientNo)}</p>
+    </div>
+    ${data.policies.map((p) => `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h2 style="margin:0">${esc(p.productName)}</h2>
+          ${statusBadge(p.status)}
+        </div>
+        <div class="row"><span class="lbl">Policy number</span><span class="val">${esc(p.policyNo)}</span></div>
+        <div class="row"><span class="lbl">Sum assured</span><span class="val">${fmtMoney(p.sumAssured)}</span></div>
+        <div class="row"><span class="lbl">Monthly premium</span><span class="val">${fmtMoney(p.monthlyPremium)}</span></div>
+        <div class="row"><span class="lbl">Commenced</span><span class="val">${fmtDate(p.commencementDate)}</span></div>
+        ${p.maturityDate ? `<div class="row"><span class="lbl">Matures</span><span class="val">${fmtDate(p.maturityDate)}</span></div>` : ''}
+        <div class="row"><span class="lbl">Outstanding balance</span><span class="val" style="color:${p.totalOutstanding > 0 ? 'var(--red)' : 'var(--green)'}">${fmtMoney(p.totalOutstanding)}</span></div>
+        <div class="paylist">
+          <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:4px">Recent payments</div>
+          ${p.recentPayments.length === 0 ? '<div class="empty">No payments recorded yet.</div>' :
+            p.recentPayments.map((pay) => `<div class="p"><span>${fmtDate(pay.date)} — ${esc(pay.paymentMonth)}</span><span>${fmtMoney(pay.amount)}</span></div>`).join('')}
+        </div>
+      </div>
+    `).join('')}
+    ${data.policies.length === 0 ? '<div class="card"><p class="empty">No policies found on your account.</p></div>' : ''}
+    <div class="card">
+      <h2>Claims</h2>
+      ${data.claims.length === 0 ? '<p class="empty">No claims on file.</p>' :
+        data.claims.map((cl) => `
+          <div class="row" style="flex-direction:column;align-items:flex-start;gap:4px">
+            <div style="display:flex;justify-content:space-between;width:100%">
+              <span class="val">${esc(cl.claimType)} — ${esc(cl.claimNo)}</span>
+              <span class="badge ${cl.status === 'Paid' ? 'b-green' : cl.status === 'Rejected' ? 'b-red' : 'b-amber'}">${esc(cl.status)}</span>
+            </div>
+            <span style="font-size:12px;color:var(--text2)">Reported ${fmtDate(cl.dateReported)} · Claimed ${fmtMoney(cl.amountClaimed)}${cl.amountApproved ? ' · Approved ' + fmtMoney(cl.amountApproved) : ''}</span>
+          </div>
+        `).join('')}
+    </div>
+    <div class="signout"><a href="#" onclick="portalSignOut();return false;">Sign out</a></div>
+  `;
+}
+
+function portalSignOut() {
+  sessionStorage.removeItem('portalToken');
+  renderLogin();
+}
+window.portalSignOut = portalSignOut;
+
+loadPortalData();
+</script>
+</body>
+</html>
